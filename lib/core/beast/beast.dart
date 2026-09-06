@@ -4098,12 +4098,6 @@ class _BeastExperiment {
     required this.weights,
   });
 }
-'''
-Path('/mnt/data/beast_small_ultimate.dart').write_text(code, encoding='utf-8')
-print('created', '/mnt/data/beast_small_ultimate.dart', 'lines', len(code.splitlines()), 'bytes', len(code.encode()))
-
-
-
 
 
 // ============================================================================
