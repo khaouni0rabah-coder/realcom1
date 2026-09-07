@@ -48,9 +48,11 @@ import 'dart:ui' as ui;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    as fln;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
@@ -1228,7 +1230,7 @@ class BeastUltimate {
   BeastConfig _config = const BeastConfig();
   Database? _db;
   http.Client? _http;
-  FlutterLocalNotificationsPlugin? _notifications;
+  fln.FlutterLocalNotificationsPlugin? _notifications;
   StreamSubscription? _networkSub;
   Timer? _flushTimer;
   Timer? _modelTimer;
@@ -3621,18 +3623,18 @@ class BeastUltimate {
   // --------------------------------------------------------------------------
 
   Future<void> _initNotifications() async {
-    _notifications = FlutterLocalNotificationsPlugin();
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const darwin = DarwinInitializationSettings(
+    _notifications = fln.FlutterLocalNotificationsPlugin();
+    const android = fln.AndroidInitializationSettings('@mipmap/ic_launcher');
+    const darwin = fln.DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-    const settings = InitializationSettings(
+    const settings = fln.InitializationSettings(
       android: android,
       iOS: darwin,
     );
-    await _notifications!.initialize(settings: settings);
+    await _notifications!.initialize(settings);
   }
 
   Future<void> showLocalNotification({
@@ -3643,15 +3645,15 @@ class BeastUltimate {
   }) async {
     if (!_config.enableNotifications || _notifications == null) return;
 
-    const androidDetails = AndroidNotificationDetails(
+    const androidDetails = fln.AndroidNotificationDetails(
       'beast_channel',
       'Beast Notifications',
       channelDescription: 'Beast local recommendation notifications',
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: fln.Importance.high,
+      priority: fln.Priority.high,
     );
-    const darwinDetails = DarwinNotificationDetails();
-    const details = NotificationDetails(
+    const darwinDetails = fln.DarwinNotificationDetails();
+    const details = fln.NotificationDetails(
       android: androidDetails,
       iOS: darwinDetails,
     );
@@ -3660,7 +3662,7 @@ class BeastUltimate {
       id,
       title,
       body,
-      notificationDetails: details,
+      details,
       payload: payload,
     );
   }
@@ -3822,7 +3824,13 @@ class BeastUltimate {
     return min(1.0, log(1 + seconds) / log(121));
   }
 
-  double _squash(double x) => tanh(x / 5);
+  double _squash(double x) {
+    // tanh مو موجودة بـ dart:math، فنحسبها يدويًا:
+    // tanh(y) = (e^(2y) - 1) / (e^(2y) + 1)
+    final y = x / 5;
+    final e2y = exp(2 * y);
+    return (e2y - 1) / (e2y + 1);
+  }
 
   String _cacheKey(
     String context,
@@ -4532,7 +4540,11 @@ class BeastBrainV2 {
 
   String _normalize(String value) => value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '_');
 
-  double _squash(double x) => tanh(x / 3);
+  double _squash(double x) {
+    final y = x / 3;
+    final e2y = exp(2 * y);
+    return (e2y - 1) / (e2y + 1);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4947,7 +4959,7 @@ class BeastUltimateV2 {
 
   Database? _db;
   http.Client? _http;
-  FlutterLocalNotificationsPlugin? _notifications;
+  fln.FlutterLocalNotificationsPlugin? _notifications;
   StreamSubscription? _networkSub;
   Timer? _flushTimer;
   Timer? _modelTimer;
@@ -5628,16 +5640,16 @@ class BeastUltimateV2 {
     String? payload,
   }) async {
     if (_notifications == null) return;
-    const androidDetails = AndroidNotificationDetails(
+    const androidDetails = fln.AndroidNotificationDetails(
       'beast_channel',
       'Beast Notifications',
       channelDescription: 'Beast application notifications',
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: fln.Importance.high,
+      priority: fln.Priority.high,
     );
-    const darwinDetails = DarwinNotificationDetails();
-    const details = NotificationDetails(android: androidDetails, iOS: darwinDetails);
-    await _notifications!.show(id, title, body, notificationDetails: details, payload: payload);
+    const darwinDetails = fln.DarwinNotificationDetails();
+    const details = fln.NotificationDetails(android: androidDetails, iOS: darwinDetails);
+    await _notifications!.show(id, title, body, details, payload: payload);
   }
 
   /// الحصول على أسباب التوصية (للعرض في UI)
@@ -5740,15 +5752,15 @@ class BeastUltimateV2 {
   }
 
   Future<void> _initNotifications() async {
-    _notifications = FlutterLocalNotificationsPlugin();
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const darwinSettings = DarwinInitializationSettings(
+    _notifications = fln.FlutterLocalNotificationsPlugin();
+    const androidSettings = fln.AndroidInitializationSettings('@mipmap/ic_launcher');
+    const darwinSettings = fln.DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-    const settings = InitializationSettings(android: androidSettings, iOS: darwinSettings);
-    await _notifications!.initialize(settings: settings);
+    const settings = fln.InitializationSettings(android: androidSettings, iOS: darwinSettings);
+    await _notifications!.initialize(settings);
   }
 
   void _initCrashTracking() {
@@ -6071,7 +6083,13 @@ class BeastUltimateV2 {
 
   double _confidence(int impressions) => (1 - 1 / sqrt(impressions + 2)).clamp(0.15, 0.95);
 
-  double _squash(double x) => tanh(x / 5);
+  double _squash(double x) {
+    // tanh مو موجودة بـ dart:math، فنحسبها يدويًا:
+    // tanh(y) = (e^(2y) - 1) / (e^(2y) + 1)
+    final y = x / 5;
+    final e2y = exp(2 * y);
+    return (e2y - 1) / (e2y + 1);
+  }
 
   Map<String, dynamic> _sanitize(Map<String, dynamic> data) {
     final output = <String, dynamic>{};
@@ -6131,8 +6149,10 @@ class BeastUltimateV2 {
   String _buildCacheKey(String context, List<BeastCandidateV2> candidates) {
     final candidateIds = candidates.map((e) => e.itemId).toList()..sort();
     final hashInput = '$context|${candidateIds.join(",")}|$_modelVersion';
-    final hash = sha256.convert(utf8.encode(hashInput)).toString();
-    return hash.substring(0, 32);
+    // نستخدم hashCode المدمج بـ Dart بدل sha256 (لا حاجة لمكتبة crypto
+    // الخارجية لمجرد بناء مفتاح تخزين مؤقت غير حساس أمنيًا).
+    final hash = hashInput.hashCode.toUnsigned(32).toRadixString(16).padLeft(8, '0');
+    return hash;
   }
 
   void _moveToFront(String key) {
