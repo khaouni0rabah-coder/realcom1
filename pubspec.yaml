@@ -11,6 +11,13 @@ dependencies:
     sdk: flutter
   shared_preferences: 2.3.5
 
+  # --- متطلبات 🐺 Beast (beast.dart وأخواتها) ---
+  sqflite: ^2.4.1
+  path: ^1.9.0
+  http: ^1.2.2
+  connectivity_plus: 5.0.2
+  flutter_local_notifications: ^17.2.3
+
 dependency_overrides:
   shared_preferences_android: 2.3.4
 
