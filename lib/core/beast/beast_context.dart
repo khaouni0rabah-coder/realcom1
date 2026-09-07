@@ -599,3 +599,46 @@ class MoodDetector {
     }
   }
 }
+
+/// يحدد معدّل الاستكشاف (exploration rate) بناءً على الحالة المزاجية
+/// وحجم الخبرة السلوكية المتراكمة لدى المستخدم.
+///
+/// الفكرة: كل ما زاد عدد الأحداث المسجّلة (historyLength)، كل ما قلّت
+/// الحاجة للاستكشاف العشوائي لأن النظام صار "يعرف" المستخدم أكثر
+/// (exploitation بدل exploration). بعض الحالات المزاجية (مثل الفضول
+/// والطاقة) تزيد الرغبة الطبيعية بتجربة محتوى جديد، بينما حالات أخرى
+/// (مثل التعب أو التركيز العميق) تفضّل محتوى مألوفًا وموثوقًا.
+class MoodExplorer {
+  /// الحد الأدنى/الأقصى لمعدل الاستكشاف حتى لا يصل لصفر أو يتجاوز 1.
+  static const double _minRate = 0.05;
+  static const double _maxRate = 0.55;
+
+  static const Map<UserMood, double> _moodMultiplier = {
+    UserMood.curious: 1.4,
+    UserMood.energetic: 1.2,
+    UserMood.happy: 1.1,
+    UserMood.neutral: 1.0,
+    UserMood.relaxed: 0.9,
+    UserMood.sad: 0.85,
+    UserMood.focused: 0.6,
+    UserMood.tired: 0.5,
+  };
+
+  /// [mood] الحالة المزاجية الحالية.
+  /// [historyLength] عدد الأحداث السلوكية المسجّلة حتى الآن.
+  static double getExplorationRate(
+    UserMood mood,
+    int historyLength,
+  ) {
+    // خط أساس يتناقص كلما زادت الخبرة (decay)، يبدأ من ~0.35 عند
+    // عدم وجود أي تاريخ وينخفض تدريجيًا مع تراكم الأحداث.
+    final baseline =
+        0.35 * math.exp(-historyLength / 200.0);
+
+    final multiplier = _moodMultiplier[mood] ?? 1.0;
+
+    final rate = baseline * multiplier;
+
+    return rate.clamp(_minRate, _maxRate);
+  }
+}

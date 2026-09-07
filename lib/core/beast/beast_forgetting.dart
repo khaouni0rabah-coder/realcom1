@@ -80,6 +80,29 @@ class BeastMemoryTrace {
       ),
     );
   }
+
+  static double _safeDouble(
+    Object? value, {
+    double fallback = 0.0,
+  }) {
+    if (value is num) {
+      final result = value.toDouble();
+      return result.isFinite ? result : fallback;
+    }
+    return fallback;
+  }
+
+  static int _safeInt(
+    Object? value,
+  ) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return 0;
+  }
 }
 
 /// محرك النسيان التكيفي.

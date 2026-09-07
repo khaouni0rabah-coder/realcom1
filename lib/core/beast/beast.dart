@@ -679,12 +679,12 @@ class BeastBrain {
         'dislike': _topMap(dislikes, 15),
         'category_affinity': _topMap(categoryAffinity, 20),
         'creator_affinity': _topMap(creatorAffinity, 20),
-        'recent_items': recent.reversed
+        'recent_items': recent.toList().reversed
             .take(30)
             .map((e) => e.itemId)
             .where((e) => e.isNotEmpty)
             .toList(),
-        'recent_events': recent.reversed
+        'recent_events': recent.toList().reversed
             .take(30)
             .map((e) => e.type)
             .toList(),
@@ -4494,8 +4494,8 @@ class BeastBrainV2 {
         'top_topics': topTopics(20),
         'interest': _topMap(interests, 30),
         'dislike': _topMap(dislikes, 15),
-        'recent_items': recentHistory.reversed.take(30).map((e) => e.itemId).where((e) => e.isNotEmpty).toList(),
-        'recent_events': recentHistory.reversed.take(30).map((e) => e.eventType).toList(),
+        'recent_items': recentHistory.toList().reversed.take(30).map((e) => e.itemId).where((e) => e.isNotEmpty).toList(),
+        'recent_events': recentHistory.toList().reversed.take(30).map((e) => e.eventType).toList(),
         'model_size': _ftrlZ.length,
       };
 
@@ -4948,7 +4948,6 @@ class BeastUltimateV2 {
   Database? _db;
   http.Client? _http;
   FlutterLocalNotificationsPlugin? _notifications;
-  FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   StreamSubscription? _networkSub;
   Timer? _flushTimer;
   Timer? _modelTimer;
@@ -6216,68 +6215,6 @@ class _CacheEntry {
   final DateTime createdAt;
   const _CacheEntry(this.items, this.createdAt);
   bool expired(Duration ttl) => DateTime.now().difference(createdAt) > ttl;
-}
-
-
-Future<void> requestConsent() async {
-  final granted = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text('تحسين تجربتك'),
-      content: Text('هل تسمح لنا بجمع بيانات الاستخدام لتحسين التوصيات؟'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('لا')),
-        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('نعم')),
-      ],
-    ),
-  );
-  
-  await BeastUltimateV2().setConsent(
-    granted == true ? BeastConsentV2.granted : BeastConsentV2.denied
-  );
-}
-
-Widget buildRecommendations() {
-  final candidates = [
-    BeastCandidateV2(
-      itemId: 'video_123',
-      tags: ['cooking', 'italian', 'pasta'],
-      category: 'food',
-      features: {'quality': 0.9, 'popularity': 0.7, 'recency': 0.8},
-      metadata: {'thumbnail': 'url...'},
-    ),
-    // ... المزيد
-  ];
-
-  return FutureBuilder<List<BeastRecommendationV2>>(
-    future: BeastUltimateV2().recommend(
-      candidates,
-      context: 'home_feed',
-      limit: 20,
-    ),
-    builder: (ctx, snap) {
-      if (!snap.hasData) return CircularProgressIndicator();
-      
-      return ListView.builder(
-        itemCount: snap.data!.length,
-        itemBuilder: (ctx, i) {
-          final rec = snap.data![i];
-          return ListTile(
-            title: Text('Item ${rec.itemId}'),
-            subtitle: Text(rec.reason), // ✅ السبب الظاهر للمستخدم
-            trailing: Text('${(rec.score * 100).round()}%'),
-            onTap: () async {
-              await BeastUltimateV2().openContent(
-                itemId: rec.itemId,
-                tags: ['cooking', 'italian'],
-                category: 'food',
-              );
-            },
-          );
-        },
-      );
-    },
-  );
 }
 
 /*
