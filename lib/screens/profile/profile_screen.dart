@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/auth/auth_session.dart';
 import '../../core/auth/user_directory.dart';
+import '../../core/beast/beast_tracker.dart';
 import '../../core/online/feed_interaction_store.dart';
 import '../../core/online/question_pack_store.dart';
 import '../../core/social/follow_store.dart';
@@ -87,7 +88,22 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _toggleFollow(String userId) {
+    final wasFollowing =
+        _followStore.isFollowing(userId);
+
     _followStore.toggleFollow(userId);
+
+    // 🐺 تتبع المتابعة/إلغاء المتابعة.
+    if (wasFollowing) {
+      BeastTracker.instance.unfollowed(
+        userId: userId,
+      );
+    } else {
+      BeastTracker.instance.followed(
+        userId: userId,
+      );
+    }
+
     setState(() {});
   }
 
