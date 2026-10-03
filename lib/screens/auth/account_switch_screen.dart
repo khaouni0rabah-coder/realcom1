@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/auth/auth_session.dart';
+import '../../core/beast/beast_tracker.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -24,6 +25,11 @@ class _AccountSwitchScreenState
       AuthSession.instance;
 
   void _switchAccount(String userId) {
+    final previousId =
+        _session.isAuthenticated
+            ? _session.currentUser.id
+            : null;
+
     final success =
         _session.login(userId);
 
@@ -36,6 +42,16 @@ class _AccountSwitchScreenState
         ),
       );
       return;
+    }
+
+    // 🐺 تتبع الدخول/التبديل.
+    if (previousId == null) {
+      BeastTracker.instance.loggedIn(userId);
+    } else if (previousId != userId) {
+      BeastTracker.instance.accountSwitched(
+        fromUserId: previousId,
+        toUserId: userId,
+      );
     }
 
     if (!mounted) return;
