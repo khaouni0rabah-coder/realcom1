@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/auth/auth_session.dart';
 import '../../core/auth/user_directory.dart';
+import '../../core/beast/beast_tracker.dart';
 import '../../core/notifications/notification_store.dart';
 import '../../core/online/question_pack_store.dart';
 import '../../core/online/question_store.dart';
@@ -153,6 +154,11 @@ class _NotificationsScreenState
     AppNotification notification,
   ) {
     _store.markAsRead(
+      notification.id,
+    );
+
+    // 🐺 فتح الإشعار إشارة اهتمام قوية.
+    BeastTracker.instance.notificationOpened(
       notification.id,
     );
 
