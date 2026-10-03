@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/social/comment_store.dart';
+import '../../core/beast/beast_tracker.dart';
 import '../../core/social/question_social_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -88,6 +89,13 @@ class SocialCommentSheet {
                   );
 
                   if (parentId == null) {
+                    // 🐺 تعليق جديد على المحتوى.
+                    BeastTracker.instance.commented(
+                      itemId: question.id,
+                      text: text,
+                      creatorId: question.authorId,
+                    );
+
                     QuestionSocialService.instance.notifyComment(
                       question: question,
                       comment: comment,
@@ -96,6 +104,13 @@ class SocialCommentSheet {
                     final parent =
                         CommentStore.instance.findById(
                       parentId,
+                    );
+
+                    // 🐺 رد على تعليق.
+                    BeastTracker.instance.replied(
+                      itemId: question.id,
+                      creatorId: question.authorId,
+                      parentCommentId: parentId,
                     );
 
                     if (parent != null) {
