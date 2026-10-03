@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/auth/auth_session.dart';
+import '../../core/beast/beast.dart';
+import '../../core/beast/beast_tracker.dart';
+import '../../core/beast/beast_user_session.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -54,6 +57,12 @@ class SettingsScreen extends StatelessWidget {
     if (shouldLogout != true) {
       return;
     }
+
+    // 🐺 تتبع الخروج قبل قطع الجلسة.
+    final userId =
+        AuthSession.instance.currentUser.id;
+
+    BeastTracker.instance.loggedOut(userId);
 
     AuthSession.instance.logout();
 
@@ -318,6 +327,16 @@ class SettingsScreen extends StatelessWidget {
             ),
 
             _sectionTitle(
+              'الخصوصية',
+            ),
+
+            const BeastPrivacyTile(),
+
+            const SizedBox(
+              height: AppSpacing.x24,
+            ),
+
+            _sectionTitle(
               'الحساب والأمان',
             ),
 
@@ -342,6 +361,140 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 🐺 بطاقة التحكم بخصوصية الوحش (التوصيات والتعلم).
+///
+/// تعرض حالة الموافقة الحالية وتسمح للمستخدم
+/// بالمنح أو الرفض (مع مسح بيانات السلوك المحلية).
+class BeastPrivacyTile extends StatefulWidget {
+  const BeastPrivacyTile({super.key});
+
+  @override
+  State<BeastPrivacyTile> createState() =>
+      _BeastPrivacyTileState();
+}
+
+class _BeastPrivacyTileState
+    extends State<BeastPrivacyTile> {
+  final _session = BeastUserSession.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _session.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    _session.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final beast = _session.beast;
+
+    final String statusText;
+    final Color statusColor;
+
+    switch (beast.consent) {
+      case BeastConsent.granted:
+        statusText =
+            'التخصيص مفعّل — الوحش يتعلم من نشاطك';
+        statusColor = AppColors.success;
+      case BeastConsent.denied:
+        statusText =
+            'التخصيص متوقف — لا يتم جمع أي سلوك';
+        statusColor = AppColors.error;
+      case BeastConsent.notDetermined:
+        statusText =
+            'لم تقرر بعد — التخصيص متوقف حاليًا';
+        statusColor = AppColors.textSecondary;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(
+        AppSpacing.x16,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius:
+            BorderRadius.circular(
+          AppRadius.card,
+        ),
+        border: Border.all(
+          color: AppColors.divider,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons
+                    .psychology_alt_outlined,
+                color: statusColor,
+              ),
+              const SizedBox(
+                width: AppSpacing.x8,
+              ),
+              Expanded(
+                child: Text(
+                  'التوصيات الذكية',
+                  style:
+                      AppTextStyles.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(
+            height: AppSpacing.x8,
+          ),
+          Text(
+            statusText,
+            style:
+                AppTextStyles.caption.copyWith(
+              color: statusColor,
+            ),
+          ),
+          const SizedBox(
+            height: AppSpacing.x12,
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () =>
+                      _session.denyConsent(),
+                  child: const Text('إيقاف'),
+                ),
+              ),
+              const SizedBox(
+                width: AppSpacing.x8,
+              ),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () =>
+                      _session.grantConsent(),
+                  child:
+                      const Text('تفعيل'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
