@@ -6,16 +6,21 @@ import 'package:flutter/foundation.dart';
 
 import '../auth/auth_session.dart';
 import 'beast.dart';
+import 'beast_server_config.dart';
 
-/// يربط هوية المستخدم بدورة حياة Beast.
+/// يربط هوية المستخدم بدورة حياة 🐺 Beast.
 ///
-/// BeastUltimate نفسه مسؤول عن lifecycle الخاص بالتطبيق.
-/// هذا المدير مسؤول عن:
-/// - مراقبة المستخدم الحالي.
-/// - تشغيل Beast للمستخدم المسجل.
-/// - منع تهيئة مكررة.
-/// - إنهاء session عند تسجيل الخروج.
-/// - منع خلط هوية المستخدم مع session أخرى.
+/// المسؤوليات:
+/// - مراقبة المستخدم الحالي في AuthSession.
+/// - تهيئة Beast للمستخدم المسجل (مع إعدادات الخادم).
+/// - تبديل المستخدم بأمان عبر BeastUltimate.switchUser.
+/// - إنهاء الجلسة عند تسجيل الخروج.
+/// - منع التهيئة المكررة أو خلط ذاكرة مستخدم بآخر.
+///
+/// الخصوصية:
+/// - لا تُمنح الموافقة تلقائيًا هنا أبدًا.
+/// - الموافقة تُقرأ من التخزين الدائم (setConsent يحفظها)،
+///   أو تُطلب من المستخدم عبر واجهة الخصوصية في الإعدادات.
 class BeastUserSession extends ChangeNotifier {
   BeastUserSession._();
 
@@ -109,15 +114,6 @@ class BeastUserSession extends ChangeNotifier {
         return;
       }
 
-      // لدينا مستخدم آخر.
-      //
-      // لا نحاول init() فوق instance جاهزة لأن BeastUltimate
-      // يرفض إعادة التهيئة أثناء _ready == true.
-      if (_boundUserId != null &&
-          _boundUserId != userId) {
-        await logout();
-      }
-
       await login(userId);
     } catch (error, stackTrace) {
       debugPrint(
@@ -130,6 +126,10 @@ class BeastUserSession extends ChangeNotifier {
   }
 
   /// يربط Beast بالمستخدم.
+  ///
+  /// BeastUltimate.init يتعامل داخليًا مع حالتي
+  /// "غير مهيأ" و"مستخدم مختلف" (عبر switchUser)،
+  /// لذلك لا نحتاج منطق تبديل هنا.
   Future<void> login(
     String userId,
   ) async {
@@ -145,32 +145,19 @@ class BeastUserSession extends ChangeNotifier {
       return;
     }
 
-    if (_beast.ready &&
-        _boundUserId == null) {
-      debugPrint(
-        'Beast is already initialized without a bound user.',
-      );
-      return;
-    }
-
     try {
       await _beast.init(
         userId: normalized,
+        config: BeastServerConfig.buildConfig(),
       );
 
       _boundUserId = normalized;
 
-      // التطوير فقط.
-      //
-      // لاحقًا تُربط هذه القيمة بموافقة المستخدم
-      // في شاشة الخصوصية/الإعدادات.
-      if (_beast.consent !=
-          BeastConsent.granted) {
-        await _beast.setConsent(
-          BeastConsent.granted,
-        );
-      }
-
+      // ملاحظة خصوصية:
+      // لا نستدعي setConsent(granted) تلقائيًا.
+      // الموافقة تُحمّل من التخزين الدائم إن وُجدت،
+      // وإلا تبقى notDetermined حتى يقرر المستخدم
+      // من شاشة الخصوصية/الإعدادات.
       notifyListeners();
     } catch (error, stackTrace) {
       debugPrint(
@@ -180,13 +167,42 @@ class BeastUserSession extends ChangeNotifier {
     }
   }
 
+  /// يمنح موافقة التتبع — تُستدعى من واجهة المستخدم فقط.
+  Future<void> grantConsent() async {
+    if (!_beast.ready) {
+      return;
+    }
+
+    try {
+      await _beast.setConsent(BeastConsent.granted);
+      notifyListeners();
+    } catch (error) {
+      debugPrint(
+        'BeastUserSession.grantConsent failed: $error',
+      );
+    }
+  }
+
+  /// يرفض موافقة التتبع ويمسح بيانات السلوك المحلية.
+  Future<void> denyConsent() async {
+    if (!_beast.ready) {
+      return;
+    }
+
+    try {
+      await _beast.setConsent(BeastConsent.denied);
+      notifyListeners();
+    } catch (error) {
+      debugPrint(
+        'BeastUserSession.denyConsent failed: $error',
+      );
+    }
+  }
+
   /// تسجيل خروج منطقي من طبقة المستخدم.
   ///
   /// لا يستدعي dispose() هنا، لأن BeastUltimate يحتوي
   /// على موارد طويلة العمر وسياسة lifecycle خاصة به.
-  ///
-  /// دعم تبديل المستخدم بالكامل سيكون في خطوة لاحقة
-  /// بإضافة user-scope/reset آمن داخل النواة نفسها.
   Future<void> logout() async {
     if (_boundUserId == null) {
       return;
